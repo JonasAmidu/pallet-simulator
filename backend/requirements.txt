@@ -1,0 +1,7 @@
+asyncio
+websockets
+numpy
+fastapi
+uvicorn
+pydantic
+aiohttp
