@@ -1,0 +1,82 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Frontend build + deploy
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Backend smoke test (runs on every push, independent of pages)
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: |
+          pip install -r backend/requirements.txt
+        working-directory: backend
+
+      - name: Syntax check
+        run: python -m py_compile backend/main.py
+
+      - name: Unit smoke test
+        run: |
+          python -c "
+import sys, importlib.util
+for mod in ['models.pallet','models.conveyor','models.lift','models.rack','models.scanner','models.plc','physics.physics','bus.modbus','faults.injector','api.websocket']:
+    spec = importlib.util.find_spec(mod, package='backend')
+    if spec is None:
+        print(f'MISSING: {mod}')
+        sys.exit(1)
+print('All modules OK')
+"
