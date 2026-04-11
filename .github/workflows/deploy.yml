@@ -72,7 +72,9 @@ jobs:
       - name: Unit smoke test
         run: |
           python -c "
-import sys, importlib.util
+import sys, os, importlib.util
+sys.path.insert(0, os.path.join(os.getcwd(), 'backend'))
+os.chdir(os.getcwd())
 for mod in ['models.pallet','models.conveyor','models.lift','models.rack','models.scanner','models.plc','physics.physics','bus.modbus','faults.injector','api.websocket']:
     spec = importlib.util.find_spec(mod, package='backend')
     if spec is None:
