@@ -16,7 +16,7 @@ export function Rack({ slots = [] }) {
   return (
     <group position={[START_X, 0, START_Z]}>
       {/* Back panel */}
-      <Box args={[CELL_W * COLS + 0.2, CELL_H * ROWS + 0.2, 0.06]} position={[0, (CELL_H * ROWS) / 2, 2]} castShadow receiveShadow>
+      <Box args={[CELL_W * COLS + 0.2, CELL_H * ROWS + 0.2, 0.06]} position={[0, (CELL_H * ROWS) / 2, -0.5]} castShadow receiveShadow>
         <meshStandardMaterial color="#1e293b" />
       </Box>
 

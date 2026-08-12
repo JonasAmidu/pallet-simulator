@@ -15,7 +15,9 @@ export function Conveyor({ position, length = 3, direction = 1, node }) {
     if (beltRef.current) {
       offsetRef.current += beltRpm * delta * 0.01
       if (offsetRef.current > 1) offsetRef.current -= 1
-      beltRef.current.material.map.offset.x = offsetRef.current
+      // The belt currently uses a solid material, so there may be no texture map.
+      // Animate the belt itself subtly instead of crashing the whole R3F canvas.
+      beltRef.current.position.x = Math.sin(offsetRef.current * Math.PI * 2) * 0.015
     }
   })
 

@@ -1,7 +1,11 @@
-import { send } from '../simulation/SocketClient'
+import { isDemoMode, send } from '../simulation/SocketClient'
 
 async function spawnPallet() {
   const weight = Math.round(80 + Math.random() * 120)
+  if (isDemoMode()) {
+    send({ type: 'spawn', weight_kg: weight })
+    return
+  }
   try {
     await fetch('http://localhost:8000/api/pallet/spawn', {
       method: 'POST',
@@ -15,6 +19,10 @@ async function spawnPallet() {
 }
 
 async function resetSim() {
+  if (isDemoMode()) {
+    send({ type: 'reset' })
+    return
+  }
   try {
     await fetch('http://localhost:8000/api/reset', { method: 'POST' })
   } catch (e) {
