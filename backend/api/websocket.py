@@ -13,7 +13,7 @@ async def broadcast_state(state: dict):
         return
     message = json.dumps(state)
     dead = set()
-    for client in connected_clients:
+    for client in tuple(connected_clients):
         try:
             await client.send(message)
         except Exception:
@@ -23,7 +23,7 @@ async def broadcast_state(state: dict):
 
 class WebSocketHandler:
     @staticmethod
-    async def handler(websocket: websockets.WebSocketServerProtocol, path: str):
+    async def handler(websocket, path=None):
         connected_clients.add(websocket)
         try:
             async for message in websocket:

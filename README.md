@@ -116,10 +116,27 @@ Broadcasts full state every tick (~16ms):
 ```
 POST /api/fault/inject   {fault_type, node_id}
 POST /api/fault/clear    {fault_type}
-POST /api/pallet/spawn   {weight_kg, target_slot}
+POST /api/pallet/spawn   {weight_kg, target_slot} → {id, target_slot}
 POST /api/reset
 GET  /api/state
 ```
+
+`weight_kg` must be a positive number and `target_slot`, when supplied, must
+identify an available rack slot such as `SLOT-2-1`. Invalid spawn requests
+return HTTP 400 with a stable error envelope:
+
+```json
+{
+  "error": {
+    "code": "invalid_spawn",
+    "message": "weight_kg must be a positive number"
+  }
+}
+```
+
+The pallet `id` and `target_slot` in the spawn response are repeated in both
+`GET /api/state` and WebSocket state payloads alongside `position` and the
+top-level `plc_state`.
 
 ---
 
