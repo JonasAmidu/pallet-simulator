@@ -19,24 +19,14 @@ jobs:
           python-version: '3.12'
 
       - name: Install deps
-        run: pip install -r backend/requirements.txt
+        run: pip install -r requirements.txt
         working-directory: backend
 
       - name: Syntax check
         run: python -m py_compile backend/main.py
 
-      - name: Unit smoke test
-        run: |
-          python -c "
-import sys, os, importlib.util
-sys.path.insert(0, os.path.join(os.getcwd(), 'backend'))
-for mod in ['models.pallet','models.conveyor','models.lift','models.rack','models.scanner','models.plc','physics.physics','bus.modbus','faults.injector','api.websocket']:
-    spec = importlib.util.find_spec(mod, package='backend')
-    if spec is None:
-        print(f'MISSING: {mod}')
-        sys.exit(1)
-print('All modules OK')
-"
+      - name: Backend behavioral tests
+        run: python -m unittest discover -s backend/tests -v
 
   frontend-build:
     runs-on: ubuntu-latest

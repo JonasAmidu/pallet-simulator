@@ -172,10 +172,15 @@ Broadcast every tick (~16ms), payload:
 GET  /api/state          ← current full state
 POST /api/fault inject   ← {fault_type, node_id}
 POST /api/fault clear    ← {fault_type, node_id}
-POST /api/pallet spawn   ← {weight_kg, target_slot}
+POST /api/pallet/spawn   ← {weight_kg, target_slot}
 POST /api/reset          ← reset simulation
 GET  /api/health         ← heartbeat
 ```
+
+The spawn endpoint returns `{id, target_slot}`. Its identity and target slot
+are repeated in subsequent REST and WebSocket state payloads. Invalid bodies,
+weights, or rack slots return HTTP 400 as
+`{error: {code: "invalid_spawn", message: "..."}}`.
 
 ---
 
