@@ -28,6 +28,17 @@ class LiftNode:
         self.moving: bool = False
         self.pallet_on_lift: bool = False
 
+    def reset(self):
+        self.current_level_m = self.min_level_m
+        self.target_level_m = self.min_level_m
+        self.level_m = self.min_level_m
+        self.overload_kg = False
+        self.motor_torque_nm = 0.0
+        self.temperature_c = 25.0
+        self.level_encoder_pulses = 0
+        self.moving = False
+        self.pallet_on_lift = False
+
     def go_to_level(self, m: float):
         if self.min_level_m <= m <= self.max_level_m:
             self.target_level_m = m

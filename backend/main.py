@@ -298,23 +298,26 @@ def sync_fault_state(all_nodes, plc, fault_injector, scanner, pallets):
 
 def reset_simulation(state_ref, all_nodes, plc, fault_injector, rack, scanner):
     pallets = state_ref["pallets_ref"]
-    if pallets is not None:
+    if pallets is None:
+        pallets = []
+        state_ref["pallets_ref"] = pallets
+    else:
         pallets.clear()
 
     fault_injector.clear_all()
     plc.reset()
     rack.reset()
+    state_ref["tick"] = 0
 
     for node in all_nodes.values():
-        if hasattr(node, "powered"):
-            node.powered = True
-        if hasattr(node, "speed_mps") and hasattr(node, "_target_speed"):
-            node.speed_mps = node._target_speed
-        if hasattr(node, "overload_kg"):
-            node.overload_kg = False
+        if hasattr(node, "reset"):
+            node.reset()
 
-    scanner.beam_broken = False
-    scanner.alarm_active = False
+    sync_fault_state(all_nodes, plc, fault_injector, scanner, pallets)
+    for node in all_nodes.values():
+        if hasattr(node, "update"):
+            node.update(0.0, pallets, all_nodes, fault_injector)
+
     return refresh_state(state_ref, all_nodes, plc, fault_injector, rack, scanner)
 
 
