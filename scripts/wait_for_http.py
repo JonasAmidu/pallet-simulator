@@ -25,7 +25,13 @@ def main() -> int:
                 if body:
                     print(body[:200])
                 return 0
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, socket.timeout) as exc:
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            ConnectionError,
+            TimeoutError,
+            socket.timeout,
+        ) as exc:
             last_error = str(exc)
             time.sleep(1)
 
