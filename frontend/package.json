@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx tests/live-ui.test.jsx"
   },
   "dependencies": {
     "@react-three/drei": "9.88.0",
@@ -17,6 +18,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
+    "react-test-renderer": "^18.2.0",
+    "tsx": "^4.20.5",
     "vite": "^5.0.0"
   }
 }
