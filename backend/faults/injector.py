@@ -2,12 +2,20 @@ from enum import Enum
 
 
 class FaultType(Enum):
-    BELT_JAM = "belt_jam"
-    WEIGHT_OVERLOAD = "weight_overload"
-    LASER_BEAM_BLOCKED = "laser_beam_blocked"
-    MOTOR_OVERTEMP = "motor_overtemp"
-    SLOT_CONFLICT = "slot_conflict"
-    CONVEYOR_POWER_LOSS = "conveyor_power_loss"
+    BELT_JAM = "BELT_JAM"
+    WEIGHT_OVERLOAD = "WEIGHT_OVERLOAD"
+    LASER_BEAM_BLOCKED = "LASER_BEAM_BLOCKED"
+    MOTOR_OVERTEMP = "MOTOR_OVERTEMP"
+    SLOT_CONFLICT = "SLOT_CONFLICT"
+    CONVEYOR_POWER_LOSS = "CONVEYOR_POWER_LOSS"
+
+    @classmethod
+    def parse(cls, raw_fault_type: str):
+        if not isinstance(raw_fault_type, str):
+            return None
+
+        normalized = raw_fault_type.strip().upper()
+        return cls.__members__.get(normalized)
 
 
 class FaultInjector:
@@ -31,7 +39,24 @@ class FaultInjector:
     def is_active(self, fault_type: str) -> bool:
         return self.active_faults.get(fault_type, False)
 
+    def active_fault_names(self) -> list[str]:
+        return [fault_type for fault_type, active in self.active_faults.items() if active]
+
     def apply_fault_effects(self, nodes, pallets):
+        for node in nodes.values():
+            if hasattr(node, '_target_speed') and hasattr(node, 'speed_mps'):
+                node.speed_mps = node._target_speed
+            if hasattr(node, 'powered'):
+                node.powered = True
+
+        lift = nodes.get("LIFT-1")
+        if lift and hasattr(lift, 'overload_kg'):
+            lift.overload_kg = False
+
+        scanner = nodes.get("SCAN-1")
+        if scanner and hasattr(scanner, 'beam_broken'):
+            scanner.beam_broken = False
+
         # BELT_JAM → set conveyor.belt_rpm = 0 for target node
         if self.is_active(FaultType.BELT_JAM.value):
             target = self.fault_details.get(FaultType.BELT_JAM.value, {}).get("node_id")

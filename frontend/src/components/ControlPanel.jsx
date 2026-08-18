@@ -32,7 +32,18 @@ async function resetSim() {
 }
 
 function injectEStop() {
-  send({ type: 'inject_fault', fault_type: 'LASER_BEAM_BLOCKED' })
+  if (isDemoMode()) {
+    send({ type: 'inject_fault', fault_type: 'LASER_BEAM_BLOCKED' })
+    return
+  }
+
+  fetch(apiUrl('/fault/inject'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fault_type: 'LASER_BEAM_BLOCKED' }),
+  }).catch(() => {
+    send({ type: 'inject_fault', fault_type: 'LASER_BEAM_BLOCKED' })
+  })
 }
 
 export function ControlPanel() {
