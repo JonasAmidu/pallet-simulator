@@ -3,7 +3,7 @@ import React from 'react'
 import TestRenderer, { act } from 'react-test-renderer'
 
 const { LiveSimulationApp } = await import('../src/LiveSimulationApp.jsx')
-const { closeSocket } = await import('../src/simulation/SocketClient.js')
+const { closeSocket, dispatchDemoAction } = await import('../src/simulation/SocketClient.js')
 const { useSimStore } = await import('../src/simulation/state.js')
 
 const BASE_STATE = {
@@ -238,11 +238,29 @@ async function testReconnectAfterUnexpectedClose() {
   })
 }
 
+async function testDemoStateMatchesBackendPublicShape() {
+  resetStore()
+
+  await act(async () => {
+    dispatchDemoAction({ type: 'reset' })
+    await sleep(0)
+  })
+
+  const state = useSimStore.getState()
+  assert.ok(state.nodes['CNV-A'])
+  assert.ok(state.nodes['LIFT-1'])
+  assert.equal(state.slots[0]?.id, 'SLOT-0-0')
+  assert.deepEqual(state.faults_active, [])
+  assert.deepEqual(state.alarms, [])
+  closeSocket()
+}
+
 const tests = [
   ['connection states', testConnectionStates],
   ['reset waits for protocol state', testResetUpdatesFromProtocol],
   ['command failure feedback', testCommandFailureFeedback],
   ['automatic reconnect', testReconnectAfterUnexpectedClose],
+  ['demo state matches backend public shape', testDemoStateMatchesBackendPublicShape],
 ]
 
 let failures = 0

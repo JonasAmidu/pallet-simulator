@@ -32,7 +32,7 @@ export function Rack({ slots = [] }) {
       {/* Shelves and LEDs */}
       {Array.from({ length: ROWS }).map((_, row) =>
         Array.from({ length: COLS }).map((_, col) => {
-          const slotId = `RACK-${row}-${col}`
+          const slotId = `SLOT-${row}-${col}`
           const slot = slotMap[slotId]
           const occupied = slot?.occupied || false
 

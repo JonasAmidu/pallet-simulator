@@ -43,8 +43,8 @@ function applyDemoState() {
     pallets,
     nodes: {
       ...DEMO_STATE.nodes,
-      LIFT_1: {
-        ...DEMO_STATE.nodes.LIFT_1,
+      'LIFT-1': {
+        ...DEMO_STATE.nodes['LIFT-1'],
         level_m: liftPallet ? liftPallet.position[1] - 0.65 : 0,
       },
     },
