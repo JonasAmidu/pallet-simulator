@@ -1,7 +1,3 @@
-asyncio
-websockets
-numpy
-fastapi
-uvicorn
-pydantic
-aiohttp
+aiohttp==3.9.5
+numpy==1.26.4
+websockets==12.0

@@ -12,6 +12,7 @@ class StorageRack:
                 self.slots[slot_id] = {
                     "occupied": False,
                     "pallet_id": None,
+                    "reserved_by": None,
                     "row": row,
                     "col": col,
                     # Default position in world coords
@@ -21,7 +22,7 @@ class StorageRack:
     def allocate_slot(self) -> str | None:
         """Find first empty slot, return slot_id or None."""
         for slot_id, slot in self.slots.items():
-            if not slot["occupied"]:
+            if not slot["occupied"] and slot["reserved_by"] is None:
                 return slot_id
         return None
 
@@ -29,16 +30,31 @@ class StorageRack:
         if slot_id in self.slots:
             self.slots[slot_id]["occupied"] = False
             self.slots[slot_id]["pallet_id"] = None
+            self.slots[slot_id]["reserved_by"] = None
 
     def is_slot_available(self, slot_id: str) -> bool:
         if slot_id not in self.slots:
             return False
-        return not self.slots[slot_id]["occupied"]
+        slot = self.slots[slot_id]
+        return not slot["occupied"] and slot["reserved_by"] is None
+
+    def reserve_slot(self, slot_id: str, pallet_id: str) -> bool:
+        if not self.is_slot_available(slot_id):
+            return False
+        self.slots[slot_id]["reserved_by"] = pallet_id
+        return True
+
+    def can_occupy_slot(self, slot_id: str, pallet_id: str) -> bool:
+        if slot_id not in self.slots:
+            return False
+        slot = self.slots[slot_id]
+        return not slot["occupied"] and slot["reserved_by"] in (None, pallet_id)
 
     def occupy_slot(self, slot_id: str, pallet_id: str):
         if slot_id in self.slots:
             self.slots[slot_id]["occupied"] = True
             self.slots[slot_id]["pallet_id"] = pallet_id
+            self.slots[slot_id]["reserved_by"] = None
 
     def get_slot_position(self, slot_id: str) -> tuple[float, float, float]:
         if slot_id in self.slots:
@@ -49,6 +65,7 @@ class StorageRack:
         for slot in self.slots.values():
             slot["occupied"] = False
             slot["pallet_id"] = None
+            slot["reserved_by"] = None
 
     def to_dict(self) -> dict:
         return {

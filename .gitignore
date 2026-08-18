@@ -1,0 +1,11 @@
+.DS_Store
+.pytest_cache/
+.venv/
+backend/.venv/
+frontend/node_modules/
+frontend/dist/
+nginx.conf
+docs/index.html
+docs/assets/
+**/__pycache__/
+*.py[cod]

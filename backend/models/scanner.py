@@ -7,6 +7,10 @@ class SafetyScanner:
         self.beam_broken: bool = False
         self.alarm_active: bool = False
 
+    def reset(self):
+        self.beam_broken = False
+        self.alarm_active = False
+
     def to_dict(self) -> dict:
         return {
             "type": "scanner",

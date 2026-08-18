@@ -3,7 +3,7 @@
 const DEMO_TICK = 1247
 
 export const DEMO_NODES = {
-  CNV_A: {
+  'CNV-A': {
     belt_rpm: 450,
     motor_torque_nm: 12.3,
     photo_eye: true,
@@ -12,7 +12,7 @@ export const DEMO_NODES = {
     position_mm: 2340,
     node_state: 'running',
   },
-  CNV_B: {
+  'CNV-B': {
     belt_rpm: 450,
     motor_torque_nm: 10.8,
     photo_eye: false,
@@ -21,7 +21,7 @@ export const DEMO_NODES = {
     position_mm: 1200,
     node_state: 'running',
   },
-  CNV_C: {
+  'CNV-C': {
     belt_rpm: 300,
     motor_torque_nm: 8.2,
     photo_eye: false,
@@ -30,7 +30,7 @@ export const DEMO_NODES = {
     position_mm: 800,
     node_state: 'running',
   },
-  LIFT_1: {
+  'LIFT-1': {
     level_m: 0.0,
     overload_kg: false,
     motor_torque_nm: 0.0,
@@ -38,24 +38,24 @@ export const DEMO_NODES = {
     level_encoder_pulses: 0,
     node_state: 'idle',
   },
-  RACK_1: {
+  'RACK-1': {
     slots: [
-      { id: 'SLOT_0', occupied: true, pallet_id: 'PLT-003' },
-      { id: 'SLOT_1', occupied: true, pallet_id: 'PLT-007' },
-      { id: 'SLOT_2', occupied: false, pallet_id: null },
-      { id: 'SLOT_3', occupied: true, pallet_id: 'PLT-012' },
-      { id: 'SLOT_4', occupied: false, pallet_id: null },
-      { id: 'SLOT_5', occupied: true, pallet_id: 'PLT-002' },
-      { id: 'SLOT_6', occupied: false, pallet_id: null },
-      { id: 'SLOT_7', occupied: true, pallet_id: 'PLT-009' },
-      { id: 'SLOT_8', occupied: false, pallet_id: null },
-      { id: 'SLOT_9', occupied: true, pallet_id: 'PLT-001' },
-      { id: 'SLOT_10', occupied: false, pallet_id: null },
-      { id: 'SLOT_11', occupied: true, pallet_id: 'PLT-008' },
+      { id: 'SLOT-0-0', occupied: true, pallet_id: 'PLT-003' },
+      { id: 'SLOT-0-1', occupied: true, pallet_id: 'PLT-007' },
+      { id: 'SLOT-0-2', occupied: false, pallet_id: null },
+      { id: 'SLOT-1-0', occupied: true, pallet_id: 'PLT-012' },
+      { id: 'SLOT-1-1', occupied: false, pallet_id: null },
+      { id: 'SLOT-1-2', occupied: true, pallet_id: 'PLT-002' },
+      { id: 'SLOT-2-0', occupied: false, pallet_id: null },
+      { id: 'SLOT-2-1', occupied: true, pallet_id: 'PLT-009' },
+      { id: 'SLOT-2-2', occupied: false, pallet_id: null },
+      { id: 'SLOT-3-0', occupied: true, pallet_id: 'PLT-001' },
+      { id: 'SLOT-3-1', occupied: false, pallet_id: null },
+      { id: 'SLOT-3-2', occupied: true, pallet_id: 'PLT-008' },
     ],
     node_state: 'running',
   },
-  SCAN_1: {
+  'SCAN-1': {
     beam_broken: false,
     temperature_c: 34.2,
     node_state: 'running',
@@ -68,45 +68,45 @@ export const DEMO_PALLETS = [
     position: [2.0, 0.15, 1.0],
     velocity: [0, 0, 0],
     weight_kg: 25.0,
-    target_slot: 'SLOT_0',
+    target_slot: 'SLOT-0-0',
     state: 'moving',
-    on_node: 'CNV_A',
+    on_node: 'CNV-A',
   },
   {
     id: 'PLT-002',
     position: [6.5, 0.15, 1.0],
     velocity: [0, 0, 0],
     weight_kg: 32.1,
-    target_slot: 'SLOT_1',
+    target_slot: 'SLOT-0-1',
     state: 'moving',
-    on_node: 'CNV_B',
+    on_node: 'CNV-B',
   },
   {
     id: 'PLT-003',
     position: [10.5, 0.15, 1.0],
     velocity: [0, 0, 0],
     weight_kg: 28.5,
-    target_slot: 'SLOT_2',
+    target_slot: 'SLOT-0-2',
     state: 'transferring',
-    on_node: 'CNV_C',
+    on_node: 'CNV-C',
   },
   {
     id: 'PLT-007',
     position: [0.5, 0.15, 0.8],
     velocity: [0, 0, 0],
     weight_kg: 22.3,
-    target_slot: 'SLOT_3',
+    target_slot: 'SLOT-1-0',
     state: 'stored',
-    on_node: 'RACK_1',
+    on_node: 'RACK-1',
   },
   {
     id: 'PLT-008',
     position: [1.5, 0.15, 0.8],
     velocity: [0, 0, 0],
     weight_kg: 30.0,
-    target_slot: 'SLOT_4',
+    target_slot: 'SLOT-1-1',
     state: 'stored',
-    on_node: 'RACK_1',
+    on_node: 'RACK-1',
   },
 ]
 
@@ -115,7 +115,8 @@ export const DEMO_STATE = {
   plc_state: 'TRANSPORTING',
   pallets: DEMO_PALLETS,
   nodes: DEMO_NODES,
-  slots: DEMO_NODES.RACK_1.slots,
+  slots: DEMO_NODES['RACK-1'].slots,
   faults_active: [],
+  fault_targets: {},
   alarms: [],
 }

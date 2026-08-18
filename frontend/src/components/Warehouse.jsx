@@ -1,3 +1,4 @@
+import React from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
 import { Box, Line } from '@react-three/drei'
@@ -12,7 +13,7 @@ function Scene() {
   const nodes = useSimStore((s) => s.nodes)
   const slots = useSimStore((s) => s.slots)
 
-  const liftLevel = nodes.LIFT_1?.level_m || 0
+  const liftLevel = nodes['LIFT-1']?.level_m || 0
 
   return (
     <>
@@ -88,7 +89,7 @@ function Scene() {
         position={[2, 0.5, 1]}
         length={4}
         direction={1}
-        node={nodes.CNV_A}
+        node={nodes['CNV-A']}
       />
 
       {/* Conveyor B */}
@@ -96,7 +97,7 @@ function Scene() {
         position={[5.5, 0.5, 1]}
         length={3}
         direction={1}
-        node={nodes.CNV_B}
+        node={nodes['CNV-B']}
       />
 
       {/* Conveyor C */}
@@ -104,7 +105,7 @@ function Scene() {
         position={[9.5, 0.5, 1]}
         length={3}
         direction={1}
-        node={nodes.CNV_C}
+        node={nodes['CNV-C']}
       />
 
       {/* Lift */}

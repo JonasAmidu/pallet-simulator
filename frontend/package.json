@@ -1,22 +1,34 @@
 {
   "name": "pallet-simulator-frontend",
   "version": "1.0.0",
+  "description": "Live and demo-mode frontend for the Pallet Movement Simulator.",
+  "homepage": "https://jonasamidu.github.io/pallet-simulator/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JonasAmidu/pallet-simulator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JonasAmidu/pallet-simulator/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx tests/live-ui.test.jsx"
   },
   "dependencies": {
+    "@react-three/drei": "9.88.0",
+    "@react-three/fiber": "^8.15.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@react-three/fiber": "^8.15.0",
-    "@react-three/drei": "^9.88.0",
     "three": "^0.158.0",
     "zustand": "^4.4.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
+    "react-test-renderer": "^18.2.0",
+    "tsx": "^4.20.5",
     "vite": "^5.0.0"
   }
 }

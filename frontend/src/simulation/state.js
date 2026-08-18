@@ -7,8 +7,16 @@ export const useSimStore = create((set) => ({
   nodes: {},
   slots: [],
   faults_active: [],
+  fault_targets: {},
   alarms: [],
   connected: false,
+  connectionStatus: 'disconnected',
+  commandFeedback: null,
   setState: (state) => set(state),
-  setConnected: (v) => set({ connected: v }),
+  setConnectionStatus: (connectionStatus) =>
+    set({
+      connectionStatus,
+      connected: connectionStatus === 'connected',
+    }),
+  setCommandFeedback: (commandFeedback) => set({ commandFeedback }),
 }))

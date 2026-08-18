@@ -1,256 +1,110 @@
-# Pallet Movement Simulator — Project Spec
+# Pallet Movement Simulator Spec
 
-## Overview
+This document records the public behavior implemented in the repository as of the issue `#6` release work. It is intentionally narrower than an aspirational product spec and tracks the current code paths and verification surface.
 
-Real-time 3D warehouse simulation of a pallet transport system. Engineers use a visually-guided interface to monitor and interact with simulated machinery — conveyor belts, a lift, storage rack, safety scanners, and a central PLC coordinating everything over a simulated industrial bus.
+## Runtime Topology
 
-Stack: **Python (asyncio) backend** + **Three.js/React frontend**
+- `backend/main.py` starts an asyncio tick loop, an aiohttp REST server on `:8000`, and a WebSocket server on `:8765`.
+- `frontend/` is a Vite app that talks to `/api/*` and `/ws` in local and Docker setups.
+- `docker-compose.yml` runs the frontend behind nginx on `:8080`, proxying `/api/*` to `backend:8000` and `/ws` to `backend:8765`.
+- GitHub Pages serves only the frontend build. In that environment the app falls back to demo mode and does not attempt to reach a live backend.
 
----
+## Backend State Model
 
-## Directory Structure
+Every tick publishes a public snapshot with:
 
-```
-pallet-simulator/
-├── backend/
-│   ├── main.py              ← entry point, asyncio event loop
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── pallet.py        ← Pallet dataclass
-│   │   ├── conveyor.py       ← ConveyorNode class
-│   │   ├── lift.py           ← LiftNode class
-│   │   ├── rack.py           ← StorageRack class
-│   │   ├── scanner.py        ← SafetyScanner class
-│   │   └── plc.py            ← CentralPLC class
-│   ├── physics/
-│   │   ├── __init__.py
-│   │   └── physics.py        ← Physics engine (position, velocity, jam detection)
-│   ├── bus/
-│   │   ├── __init__.py
-│   │   └── modbus.py         ← Simulated Modbus-like message bus
-│   ├── faults/
-│   │   ├── __init__.py
-│   │   └── injector.py       ← Fault injection logic
-│   ├── api/
-│   │   ├── __init__.py
-│   │   └── websocket.py      ← WebSocket server → frontend
-│   └── requirements.txt
-├── frontend/
-│   ├── public/
-│   │   └── index.html
-│   ├── src/
-│   │   ├── App.jsx           ← main React component
-│   │   ├── App.css
-│   │   ├── components/
-│   │   │   ├── Warehouse.jsx  ← Three.js scene
-│   │   │   ├── Pallet.jsx     ← animated pallet mesh
-│   │   │   ├── Conveyor.jsx   ← conveyor segment mesh
-│   │   │   ├── Lift.jsx       ← lift platform mesh
-│   │   │   ├── Rack.jsx       ← storage rack mesh
-│   │   │   ├── Telemetry.jsx  ← live sensor readout panel
-│   │   │   └── FaultPanel.jsx ← fault injection controls
-│   │   ├── simulation/
-│   │   │   ├── SocketClient.js ← WebSocket → backend
-│   │   │   └── state.js        ← shared sim state
-│   │   └── main.jsx
-│   ├── package.json
-│   └── vite.config.js
-├── docker-compose.yml
-├── README.md
-└── SPEC.md
+- `tick`: integer tick counter.
+- `timestamp`: `asyncio.get_running_loop().time()` floating-point seconds.
+- `plc_state`: one of `IDLE`, `LOADING`, `TRANSPORTING`, `LIFTING`, `STORING`, `COMPLETE`, `ESTOP`.
+- `pallets`: public pallet list with `id`, `position`, `velocity`, `state`, `on_node`, `weight_kg`, `target_slot`.
+- `nodes`: keyed by hyphenated node IDs such as `CNV-A`, `LIFT-1`, `SCAN-1`.
+- `slots`: rack occupancy list keyed as `SLOT-r-c`.
+- `faults_active`: active backend fault names.
+- `alarms`: currently `LASER_ALARM` and `LIFT_OVERLOAD` when applicable.
+
+## PLC Flow
+
+The current PLC implementation moves pallets through this loop:
+
+```text
+IDLE -> LOADING -> TRANSPORTING -> LIFTING -> STORING -> COMPLETE -> IDLE
 ```
 
----
+`ESTOP` is entered whenever the scanner alarm is active. The reset path or a cleared scanner fault returns the controller to its idle baseline.
 
-## Backend Specification
+## Public Commands
 
-### Simulator Ticks
-- Runs at 60 Hz (16.67ms per tick)
-- Each tick: physics → sensors → PLC logic → broadcast state
+### REST
 
-### Pallet
-```python
-@dataclass
-class Pallet:
-    id: str
-    position: tuple[float, float, float]   # (x, y, z) meters
-    velocity: tuple[float, float, float]  # m/s
-    weight_kg: float
-    target_slot: str | None
-    state: Literal['idle','moving','transferring','stored','error']
-    on_node: str | None   # node id pallet is currently on
-```
+- `GET /api/health`
+  Returns `503 {"status":"starting"}` until the first snapshot exists, then `200 {"status":"ok","tick":...,"plc_state":...}`.
+- `GET /api/state`
+  Returns the latest snapshot or `{}` during startup.
+- `POST /api/pallet/spawn`
+  Validates the JSON body, spawns a pallet, and returns `{"id": "...", "target_slot": "SLOT-r-c"}`.
+- `POST /api/reset`
+  Clears pallets, faults, rack occupancy, and node state; returns `{"status": "reset"}`.
+- `POST /api/fault/inject`
+  Accepts `fault_type` and optional `node_id`.
+- `POST /api/fault/clear`
+  Accepts an empty JSON object to clear everything or a `fault_type` to clear one fault.
 
-### Nodes
+Stable error payloads use:
 
-**ConveyorNode**
-- Properties: `length_m`, `width_m`, `speed_mps`, `angle_deg`, `direction`
-- Sensors: `belt_rpm`, `motor_torque_nm`, `photo_eye`, `weight_kg`, `temperature_c`, `position_mm`
-- Commands: `start()`, `stop()`, `set_speed(speed_mps)`
-- Physics: moves pallets at `speed_mps` along conveyor axis
-
-**LiftNode**
-- Properties: `min_level_m`, `max_level_m`, `current_level_m`, `capacity_kg`
-- Sensors: `level_m`, `overload_kg`, `motor_torque_nm`, `temperature_c`, `level_encoder_pulses`
-- Commands: `go_to_level(m)`, `emergency_stop()`
-- Faults: overload → refuse to rise; level mismatch → alarm
-
-**StorageRack**
-- 3×4 grid = 12 slots
-- Properties: `slots[12]` each with `occupied: bool`, `pallet_id: str|None`
-- Sensors: per-slot IR sensor, total occupied count
-
-**SafetyScanner**
-- Laser curtain at entry zone
-- Sensors: `beam_broken`, `alarm_active`
-- Faults: beam_blocked → triggers e-stop across all nodes
-
-**CentralPLC**
-- Polls all nodes every 100ms via simulated Modbus
-- State machine: `IDLE → LOADING → TRANSPORTING → STORING → COMPLETE`
-- Broadcasts combined system state to frontend via WebSocket
-
-### Modbus Bus (Simulated)
-- All nodes register on a shared `Bus` object
-- PLC sends read/write commands each tick
-- Messages: `{from, to, func_code, address, value, timestamp}`
-
-### Fault Injection
-Injected via backend API or frontend panel:
-- `BELT_JAM` — force conveyor RPM → 0, next pallet accumulates
-- `WEIGHT_OVERLOAD` — pallet weight > lift capacity
-- `LASER_BEAM_BLOCKED` — trigger safety e-stop
-- `MOTOR_OVERTEMP` — reduce conveyor speed by 50%
-- `SLOT_CONFLICT` — two pallets target same slot
-- `CONVEYOR_POWER_LOSS` — node powers off
-
-### WebSocket API (backend → frontend)
-
-Broadcast every tick (~16ms), payload:
 ```json
 {
-  "tick": 12345,
-  "timestamp": "2026-04-10T20:10:00.000Z",
-  "plc_state": "TRANSPORTING",
-  "pallets": [
-    {
-      "id": "PLT-001",
-      "position": [2.4, 0.0, 1.2],
-      "state": "moving",
-      "on_node": "CNV-A",
-      "weight_kg": 120.5
-    }
-  ],
-  "nodes": {
-    "CNV-A": {
-      "type": "conveyor",
-      "belt_rpm": 450,
-      "motor_torque_nm": 12.4,
-      "photo_eye": false,
-      "temperature_c": 45.2,
-      "position_mm": 1200
-    },
-    "LIFT-1": {
-      "type": "lift",
-      "level_m": 3.5,
-      "overload_kg": false,
-      "motor_torque_nm": 0.0,
-      "temperature_c": 38.0
-    }
-  },
-  "slots": [
-    {"id": "SLOT-0-0", "occupied": true, "pallet_id": "PLT-001"},
-    ...
-  ],
-  "faults_active": ["LASER_BEAM_BLOCKED"],
-  "alarms": ["LASER_ALARM"]
+  "error": {
+    "code": "invalid_spawn_request",
+    "message": "Invalid pallet spawn request.",
+    "details": ["weight_kg must be a positive number."]
+  }
 }
 ```
 
-### REST API (backend HTTP)
-```
-GET  /api/state          ← current full state
-POST /api/fault inject   ← {fault_type, node_id}
-POST /api/fault clear    ← {fault_type, node_id}
-POST /api/pallet spawn   ← {weight_kg, target_slot}
-POST /api/reset          ← reset simulation
-GET  /api/health         ← heartbeat
-```
+### WebSocket
 
----
+- The backend sends the latest snapshot immediately after connect when one is available.
+- Commands are JSON objects with a `type` and optional `command_id`.
+- Supported command types are `spawn`, `reset`, `inject_fault`, and `clear_faults`.
+- Command acknowledgements use either:
 
-## Frontend Specification
-
-### Visual Style
-- Dark industrial aesthetic — deep grey (#1a1a1a) floor, steel conveyors, amber warning lights
-- Camera: isometric perspective, user can orbit/zoom
-- Fonts: monospace for telemetry readouts
-
-### 3D Scene (Three.js)
-- **Floor**: large flat mesh, subtle grid lines
-- **Conveyors**: box geometry segments, animated belt texture (scrolling UV)
-- **Lift**: platform that animates vertically between floor and upper level
-- **Pallets**: box geometry with crates/boxes on top
-- **Rack**: grid of shelf slots with LED indicators (green=empty, red=occupied)
-- **Scanner**: laser curtain beams drawn as thin red lines across entry zone
-- **Lighting**: ambient + directional from upper-left
-
-### Telemetry Panel (overlay)
-- Real-time readout: each node's key sensor values
-- Color-coded: green (OK), amber (warning), red (alarm)
-- Updates from WebSocket broadcast
-
-### Fault Panel (overlay)
-- Toggle switches for each fault type
-- When active, fault shows in alarm list
-- Reset button clears all active faults
-
-### Control Panel
-- "Spawn Pallet" button — creates a new pallet at entry
-- "Reset Sim" button — resets everything
-- "Emergency Stop" button — big red, triggers e-stop fault
-
-### Pallet Color States
-- `idle`: grey
-- `moving`: amber glow
-- `transferring`: blue
-- `stored`: green
-- `error`: red pulse
-
----
-
-## Deployment
-
-### Option A: Docker Compose (recommended)
-```yaml
-services:
-  backend:
-    build: ./backend
-    ports: ["8000:8000", "8765:8765"]  # 8000=HTTP, 8765=WebSocket
-    restart: unless-stopped
-  frontend:
-    build: ./frontend
-    ports: ["3000:3000"]
-    depends_on: [backend]
+```json
+{"type":"command_result","command":"reset","command_id":"reset-1","message":"Simulation reset."}
 ```
 
-### Option B: Local Dev
-```bash
-# backend
-cd backend && pip install -r requirements.txt && python main.py
+or
 
-# frontend
-cd frontend && npm install && npm run dev
+```json
+{"type":"command_error","command":"spawn","command_id":"spawn-1","code":"spawn_unavailable","message":"No rack slots are available."}
 ```
 
----
+## Frontend Behavior
 
-## Success Criteria
+- `LiveSimulationApp` renders telemetry, the warehouse canvas, the fault panel, the control panel, and a status bar.
+- The Three.js scene reads the same hyphenated node IDs produced by the backend snapshots.
+- Rack LEDs resolve against backend slot IDs of the form `SLOT-r-c`.
+- The socket client automatically reconnects after unexpected close events.
+- On `*.github.io`, the client switches to demo mode and synthesizes snapshots with the same public shape used by the live backend.
 
-- [ ] Pallet spawns at entry conveyor, moves to storage slot automatically
-- [ ] Lift raises and lowers pallets between floor levels
-- [ ] Safety scanner beam break triggers e-stop across all nodes
-- [ ] Fault injection panel can trigger and clear each fault type
-- [ ] Telemetry panel shows live sensor values from all nodes
-- [ ] 3D visualization updates smoothly at >30 FPS
-- [ ] Reset clears all pallets and returns system to IDLE
+## CI and Verification Surface
+
+- Backend behavioral coverage: `pytest backend/tests`
+- Frontend interaction coverage: `cd frontend && npm test`
+- Frontend production build: `cd frontend && npm run build`
+- Local smoke verification: `./scripts/smoke-local.sh`
+- Docker smoke verification: `./scripts/smoke-compose.sh`
+- Generated-file hygiene: `./scripts/check-generated-files.sh`
+
+GitHub Actions `ci.yml` runs the backend tests, frontend interaction tests, frontend build, local smoke script, generated-file check, and Docker smoke script.
+
+## Trade-Offs
+
+- The system is intentionally lightweight and stateful in memory. That makes local verification fast, but restart wipes simulation state.
+- The frontend fault panel uses REST for fault mutations while the rest of the live control flow uses WebSocket commands. The UI still converges through the same public snapshot stream.
+- The GitHub Pages deployment is optimized for an accessible demo, not a live industrial-control environment.
+
+## Current Limitations
+
+- There is no browser-driven end-to-end suite.
+- The monotonic `timestamp` is not suitable for wall-clock audit trails.
+- Fault modeling is intentionally partial; only the effects represented in `faults/injector.py` are simulated.
