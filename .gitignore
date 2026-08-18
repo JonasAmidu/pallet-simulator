@@ -5,6 +5,7 @@ backend/.venv/
 frontend/node_modules/
 frontend/dist/
 nginx.conf
-docs/
+docs/index.html
+docs/assets/
 **/__pycache__/
 *.py[cod]

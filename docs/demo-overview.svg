@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Pallet Simulator release overview</title>
+  <desc id="desc">Annotated overview of the Pallet Simulator user interface, with a telemetry sidebar on the left, a 3D warehouse canvas in the center, a fault panel on the right, command controls near the bottom, and a status bar across the footer.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="canvas" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#172033"/>
+      <stop offset="100%" stop-color="#0b1220"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1280" height="56" fill="#111111"/>
+  <text x="28" y="35" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">PalletSim</text>
+  <text x="170" y="35" fill="#f97316" font-family="Segoe UI, Arial, sans-serif" font-size="18">Recruiter-ready release overview</text>
+  <text x="1030" y="35" fill="#22c55e" font-family="Segoe UI, Arial, sans-serif" font-size="16">Connected</text>
+
+  <rect x="24" y="88" width="272" height="560" rx="14" fill="#161616" stroke="#303030"/>
+  <text x="46" y="122" fill="#9ca3af" font-family="Segoe UI, Arial, sans-serif" font-size="16" letter-spacing="1.2">TELEMETRY</text>
+  <rect x="42" y="144" width="236" height="92" rx="10" fill="#1f2937"/>
+  <rect x="42" y="248" width="236" height="92" rx="10" fill="#1f2937"/>
+  <rect x="42" y="352" width="236" height="92" rx="10" fill="#1f2937"/>
+  <rect x="42" y="456" width="236" height="92" rx="10" fill="#1f2937"/>
+  <text x="60" y="176" fill="#f8fafc" font-family="Courier New, monospace" font-size="18">CNV-A  belt_rpm  4.77</text>
+  <text x="60" y="202" fill="#22c55e" font-family="Courier New, monospace" font-size="16">photo_eye  ON</text>
+  <text x="60" y="280" fill="#f8fafc" font-family="Courier New, monospace" font-size="18">CNV-B  temperature 35.0</text>
+  <text x="60" y="384" fill="#f8fafc" font-family="Courier New, monospace" font-size="18">LIFT-1 level_m 1.50</text>
+  <text x="60" y="488" fill="#f8fafc" font-family="Courier New, monospace" font-size="18">SCAN-1 beam_broken NO</text>
+
+  <rect x="320" y="88" width="680" height="560" rx="16" fill="url(#canvas)" stroke="#334155"/>
+  <text x="352" y="122" fill="#cbd5e1" font-family="Segoe UI, Arial, sans-serif" font-size="16">3D warehouse scene</text>
+  <rect x="384" y="432" width="190" height="26" rx="7" fill="#f97316"/>
+  <rect x="584" y="432" width="150" height="26" rx="7" fill="#f97316"/>
+  <rect x="744" y="432" width="150" height="26" rx="7" fill="#f97316"/>
+  <rect x="700" y="270" width="34" height="174" rx="8" fill="#94a3b8"/>
+  <rect x="820" y="230" width="22" height="250" fill="#334155"/>
+  <rect x="850" y="230" width="22" height="250" fill="#334155"/>
+  <rect x="820" y="230" width="160" height="18" fill="#475569"/>
+  <rect x="820" y="312" width="160" height="18" fill="#475569"/>
+  <rect x="820" y="394" width="160" height="18" fill="#475569"/>
+  <rect x="820" y="476" width="160" height="18" fill="#475569"/>
+  <rect x="418" y="404" width="36" height="36" fill="#b45309"/>
+  <rect x="642" y="404" width="36" height="36" fill="#b45309"/>
+  <rect x="776" y="404" width="36" height="36" fill="#b45309"/>
+  <line x1="368" y1="362" x2="418" y2="362" stroke="#ef4444" stroke-width="4"/>
+  <circle cx="364" cy="362" r="9" fill="#ef4444"/>
+  <circle cx="422" cy="362" r="9" fill="#ef4444"/>
+
+  <rect x="894" y="104" width="86" height="26" rx="13" fill="#7f1d1d"/>
+  <text x="911" y="122" fill="#f8fafc" font-family="Courier New, monospace" font-size="14">Faults</text>
+
+  <rect x="858" y="520" width="120" height="52" rx="10" fill="#166534"/>
+  <rect x="990" y="520" width="120" height="52" rx="10" fill="#374151"/>
+  <rect x="1122" y="520" width="120" height="52" rx="10" fill="#991b1b"/>
+  <text x="876" y="552" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="18">Spawn</text>
+  <text x="1024" y="552" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="18">Reset</text>
+  <text x="1147" y="552" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="18">E-STOP</text>
+
+  <rect x="1022" y="88" width="234" height="360" rx="14" fill="#161616" stroke="#303030"/>
+  <text x="1044" y="122" fill="#9ca3af" font-family="Segoe UI, Arial, sans-serif" font-size="16" letter-spacing="1.2">FAULT INJECTION</text>
+  <rect x="1040" y="146" width="198" height="34" rx="8" fill="#202020"/>
+  <rect x="1040" y="190" width="198" height="34" rx="8" fill="#202020"/>
+  <rect x="1040" y="234" width="198" height="34" rx="8" fill="#202020"/>
+  <rect x="1040" y="278" width="198" height="34" rx="8" fill="#202020"/>
+  <rect x="1040" y="332" width="198" height="40" rx="8" fill="#7f1d1d"/>
+  <text x="1058" y="168" fill="#d1d5db" font-family="Courier New, monospace" font-size="16">BELT_JAM (A)</text>
+  <text x="1058" y="212" fill="#d1d5db" font-family="Courier New, monospace" font-size="16">BELT_JAM (B)</text>
+  <text x="1058" y="256" fill="#d1d5db" font-family="Courier New, monospace" font-size="16">LASER_BEAM_BLOCKED</text>
+  <text x="1058" y="300" fill="#d1d5db" font-family="Courier New, monospace" font-size="16">CONVEYOR_POWER_LOSS</text>
+  <text x="1064" y="357" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="16">Clear All Faults</text>
+
+  <rect x="0" y="668" width="1280" height="52" fill="#111111"/>
+  <text x="34" y="700" fill="#cbd5e1" font-family="Courier New, monospace" font-size="18">PLC: TRANSPORTING</text>
+  <text x="342" y="700" fill="#cbd5e1" font-family="Courier New, monospace" font-size="18">Tick: 321</text>
+  <text x="564" y="700" fill="#cbd5e1" font-family="Courier New, monospace" font-size="18">FPS: 60</text>
+
+  <path d="M170 170 L316 130" stroke="#f97316" stroke-width="3"/>
+  <rect x="188" y="164" width="164" height="52" rx="10" fill="#111827" stroke="#f97316"/>
+  <text x="202" y="188" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="16">Live node cards match</text>
+  <text x="202" y="208" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="16">the backend snapshot.</text>
+
+  <path d="M940 470 L1040 490" stroke="#22c55e" stroke-width="3"/>
+  <rect x="786" y="448" width="176" height="56" rx="10" fill="#052e16" stroke="#22c55e"/>
+  <text x="802" y="473" fill="#dcfce7" font-family="Segoe UI, Arial, sans-serif" font-size="16">The control panel drives</text>
+  <text x="802" y="494" fill="#dcfce7" font-family="Segoe UI, Arial, sans-serif" font-size="16">spawn, reset, and e-stop.</text>
+
+  <path d="M1012 244 L972 244" stroke="#ef4444" stroke-width="3"/>
+  <rect x="720" y="208" width="234" height="56" rx="10" fill="#3f0d12" stroke="#ef4444"/>
+  <text x="736" y="233" fill="#fee2e2" font-family="Segoe UI, Arial, sans-serif" font-size="16">Fault buttons mutate the backend</text>
+  <text x="736" y="254" fill="#fee2e2" font-family="Segoe UI, Arial, sans-serif" font-size="16">or demo-mode snapshot shape.</text>
+</svg>
