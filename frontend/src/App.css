@@ -71,6 +71,10 @@ body {
   background: #22c55e;
 }
 
+.connection-dot.reconnecting {
+  background: #f59e0b;
+}
+
 /* Main area */
 .main-area {
   display: flex;
@@ -277,14 +281,17 @@ body {
 }
 
 /* Control panel */
-.control-panel {
+.control-panel-wrap {
   position: absolute;
   bottom: 60px;
   left: 12px;
+  z-index: 50;
+}
+
+.control-panel {
   display: flex;
   gap: 8px;
   align-items: center;
-  z-index: 50;
 }
 
 .ctrl-btn {
@@ -319,6 +326,30 @@ body {
   font-weight: 700;
   letter-spacing: 0.5px;
   border: 2px solid #991b1b;
+}
+
+.command-feedback {
+  margin-top: 8px;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: rgba(20, 20, 20, 0.94);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.command-feedback.success {
+  border-color: #166534;
+  color: #bbf7d0;
+}
+
+.command-feedback.error {
+  border-color: #991b1b;
+  color: #fecaca;
 }
 
 /* Status bar */

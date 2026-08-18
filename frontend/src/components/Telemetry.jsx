@@ -1,3 +1,4 @@
+import React from 'react'
 import { useSimStore } from '../simulation/state'
 
 function valueClass(name, value) {

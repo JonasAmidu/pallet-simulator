@@ -1,3 +1,4 @@
+import React from 'react'
 import { Box } from '@react-three/drei'
 
 const COLS = 3

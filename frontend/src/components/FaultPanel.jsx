@@ -1,3 +1,4 @@
+import React from 'react'
 import { useSimStore } from '../simulation/state'
 import { isDemoMode, send } from '../simulation/SocketClient'
 import { apiUrl } from '../simulation/network'

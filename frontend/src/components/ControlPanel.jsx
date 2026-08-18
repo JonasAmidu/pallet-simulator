@@ -1,33 +1,21 @@
-import { isDemoMode, send } from '../simulation/SocketClient'
-import { apiUrl } from '../simulation/network'
+import React from 'react'
+import { useSimStore } from '../simulation/state'
+import { send, sendCommand } from '../simulation/SocketClient'
 
 async function spawnPallet() {
   const weight = Math.round(80 + Math.random() * 120)
-  if (isDemoMode()) {
-    send({ type: 'spawn', weight_kg: weight })
-    return
-  }
   try {
-    await fetch(apiUrl('/pallet/spawn'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weight_kg: weight }),
-    })
-  } catch (e) {
-    // Try via WebSocket
-    send({ type: 'spawn', weight_kg: weight })
+    await sendCommand({ type: 'spawn', weight_kg: weight })
+  } catch {
+    // Feedback is already published through the shared store.
   }
 }
 
 async function resetSim() {
-  if (isDemoMode()) {
-    send({ type: 'reset' })
-    return
-  }
   try {
-    await fetch(apiUrl('/reset'), { method: 'POST' })
-  } catch (e) {
-    send({ type: 'reset' })
+    await sendCommand({ type: 'reset' })
+  } catch {
+    // Feedback is already published through the shared store.
   }
 }
 
@@ -36,17 +24,33 @@ function injectEStop() {
 }
 
 export function ControlPanel() {
+  const commandFeedback = useSimStore((s) => s.commandFeedback)
+
   return (
-    <div className="control-panel">
-      <button className="ctrl-btn spawn" onClick={spawnPallet}>
-        + Spawn Pallet
-      </button>
-      <button className="ctrl-btn reset" onClick={resetSim}>
-        Reset
-      </button>
-      <button className="ctrl-btn estop" onClick={injectEStop}>
-        E-STOP
-      </button>
+    <div className="control-panel-wrap">
+      <div className="control-panel">
+        <button className="ctrl-btn spawn" onClick={() => void spawnPallet()}>
+          + Spawn Pallet
+        </button>
+        <button className="ctrl-btn reset" onClick={() => void resetSim()}>
+          Reset
+        </button>
+        <button className="ctrl-btn estop" onClick={injectEStop}>
+          E-STOP
+        </button>
+      </div>
+      {commandFeedback && (
+        <div
+          className={`command-feedback ${commandFeedback.level}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span>{commandFeedback.message}</span>
+          {commandFeedback.details?.length > 0 && (
+            <span>{commandFeedback.details.join(' ')}</span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
