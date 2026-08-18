@@ -117,5 +117,6 @@ export const DEMO_STATE = {
   nodes: DEMO_NODES,
   slots: DEMO_NODES['RACK-1'].slots,
   faults_active: [],
+  fault_targets: {},
   alarms: [],
 }

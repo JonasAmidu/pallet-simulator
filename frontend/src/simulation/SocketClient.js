@@ -16,6 +16,7 @@ let demoPallets = DEMO_STATE.pallets.map((pallet, index) => ({
   demoOffset: index * 2.5,
 }))
 let demoFaults = []
+let demoFaultTargets = {}
 
 function movingPallet(pallet, index) {
   const progress = (demoTick * 0.08 + pallet.demoOffset) % 12
@@ -49,6 +50,7 @@ function applyDemoState() {
       },
     },
     faults_active: [...demoFaults],
+    fault_targets: { ...demoFaultTargets },
     alarms: demoFaults.map((fault) => `${fault} active`),
     connected: false,
   }
@@ -243,14 +245,17 @@ export function dispatchDemoAction(data) {
   } else if (data.type === 'reset') {
     demoTick = 0
     demoFaults = []
+    demoFaultTargets = {}
     demoPallets = DEMO_STATE.pallets.slice(0, 3).map((pallet, index) => ({
       ...pallet,
       demoOffset: index * 2.5,
     }))
-  } else if (data.type === 'inject_fault' && !demoFaults.includes(data.fault_type)) {
-    demoFaults.push(data.fault_type)
+  } else if (data.type === 'inject_fault') {
+    if (!demoFaults.includes(data.fault_type)) demoFaults.push(data.fault_type)
+    if (data.node_id) demoFaultTargets[data.fault_type] = data.node_id
   } else if (data.type === 'clear_faults') {
     demoFaults = []
+    demoFaultTargets = {}
   }
 
   applyDemoState()

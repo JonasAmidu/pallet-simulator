@@ -74,6 +74,11 @@ def build_state_snapshot(state_ref, all_nodes, plc, fault_injector, rack, scanne
         "nodes": {node_id: node.to_dict() for node_id, node in all_nodes.items()},
         "slots": rack.to_dict()["slots"],
         "faults_active": fault_injector.active_fault_names(),
+        "fault_targets": {
+            fault_type: details.get("node_id")
+            for fault_type, details in fault_injector.fault_details.items()
+            if fault_injector.is_active(fault_type) and details.get("node_id") is not None
+        },
         "alarms": plc.get_alarms(all_nodes, scanner),
     }
 
@@ -233,8 +238,11 @@ def validate_fault_payload(
     if node_id is not None and (not isinstance(node_id, str) or node_id not in all_nodes):
         errors.append("node_id must reference a known node.")
 
-    if fault in NODE_SCOPED_FAULTS and node_id is not None and node_id not in CONVEYOR_NODE_IDS:
-        errors.append("node_id must reference one of: CNV-A, CNV-B, CNV-C.")
+    if fault in NODE_SCOPED_FAULTS:
+        if node_id is None:
+            errors.append("node_id is required for this fault type.")
+        elif node_id not in CONVEYOR_NODE_IDS:
+            errors.append("node_id must reference one of: CNV-A, CNV-B, CNV-C.")
 
     if errors:
         return None, None, build_fault_command_error(errors)

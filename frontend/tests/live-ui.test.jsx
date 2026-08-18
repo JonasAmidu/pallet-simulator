@@ -13,6 +13,7 @@ const BASE_STATE = {
   nodes: {},
   slots: [],
   faults_active: [],
+  fault_targets: {},
   alarms: [],
 }
 
@@ -220,6 +221,43 @@ async function testCommandFailureFeedback() {
   })
 }
 
+async function testNodeScopedFaultControlUsesAndHighlightsTarget() {
+  await withRenderedApp(async (renderer) => {
+    const requests = []
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (url, options) => {
+      requests.push({ url, options })
+      return { ok: true }
+    }
+
+    try {
+      await act(async () => {
+        latestSocket().open()
+        findButton(renderer, 'BELT_JAM (B)').props.onClick()
+        await sleep(0)
+      })
+
+      assert.equal(requests.length, 1)
+      assert.deepEqual(JSON.parse(requests[0].options.body), {
+        fault_type: 'BELT_JAM',
+        node_id: 'CNV-B',
+      })
+
+      await act(async () => {
+        useSimStore.getState().setState({
+          ...BASE_STATE,
+          faults_active: ['BELT_JAM'],
+          fault_targets: { BELT_JAM: 'CNV-B' },
+        })
+      })
+      assert.match(findButton(renderer, 'BELT_JAM (B)').props.className, /active/)
+      assert.doesNotMatch(findButton(renderer, 'BELT_JAM (A)').props.className, /active/)
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+}
+
 async function testReconnectAfterUnexpectedClose() {
   await withRenderedApp(async (renderer) => {
     await act(async () => {
@@ -259,6 +297,7 @@ const tests = [
   ['connection states', testConnectionStates],
   ['reset waits for protocol state', testResetUpdatesFromProtocol],
   ['command failure feedback', testCommandFailureFeedback],
+  ['node-scoped fault target', testNodeScopedFaultControlUsesAndHighlightsTarget],
   ['automatic reconnect', testReconnectAfterUnexpectedClose],
   ['demo state matches backend public shape', testDemoStateMatchesBackendPublicShape],
 ]

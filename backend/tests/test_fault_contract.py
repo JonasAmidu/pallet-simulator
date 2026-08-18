@@ -125,6 +125,24 @@ class FaultContractTest(unittest.TestCase):
         self.assertEqual(cleared_state["faults_active"], [])
         self.assertEqual(cleared_state["alarms"], [])
 
+    def test_node_scoped_fault_requires_target_and_reports_it(self) -> None:
+        status, error_payload = http_json("POST", "/api/fault/inject", {"fault_type": "MOTOR_OVERTEMP"})
+        self.assertEqual(status, 400, error_payload)
+        self.assertIn(
+            "node_id is required for this fault type.",
+            error_payload.get("error", {}).get("details", []),
+        )
+
+        status, payload = http_json(
+            "POST",
+            "/api/fault/inject",
+            {"fault_type": "MOTOR_OVERTEMP", "node_id": "CNV-B"},
+        )
+        self.assertEqual(status, 200, payload)
+        state = wait_for_state(lambda current: current.get("fault_targets", {}).get("MOTOR_OVERTEMP") == "CNV-B")
+        self.assertEqual(state["faults_active"], ["MOTOR_OVERTEMP"])
+        self.assertEqual(state["nodes"]["CNV-B"]["speed_mps"], 0.25)
+
     def test_invalid_fault_requests_return_useful_public_errors(self) -> None:
         cases = [
             ({}, "fault_type is required."),
