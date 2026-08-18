@@ -385,6 +385,7 @@ async def main():
                 state_ref["pallets_ref"] = pallets
 
             pallet = plc.spawn_pallet(weight, slot, pallets)
+            rack.reserve_slot(slot, pallet.id)
             await broadcast_latest_state(state_ref, all_nodes, plc, fault_injector, rack, scanner)
             await send_message(
                 websocket,
@@ -520,6 +521,7 @@ async def main():
             state_ref["pallets_ref"] = pallets
 
         pallet = plc.spawn_pallet(weight, slot, pallets)
+        rack.reserve_slot(slot, pallet.id)
         refresh_state(state_ref, all_nodes, plc, fault_injector, rack, scanner)
         return web.json_response({"id": pallet.id, "target_slot": slot})
 

@@ -122,6 +122,33 @@ class SpawnContractTest(unittest.TestCase):
             "Invalid pallet spawn request.",
         )
 
+    def test_back_to_back_default_spawns_reserve_distinct_slots(self) -> None:
+        status, first_spawn = http_json("POST", "/api/pallet/spawn", {"weight_kg": 100.0})
+        self.assertEqual(status, 200, first_spawn)
+
+        status, second_spawn = http_json("POST", "/api/pallet/spawn", {"weight_kg": 110.0})
+        self.assertEqual(status, 200, second_spawn)
+
+        self.assertNotEqual(first_spawn["target_slot"], second_spawn["target_slot"])
+        self.assertEqual(first_spawn["target_slot"], "SLOT-0-0")
+        self.assertEqual(second_spawn["target_slot"], "SLOT-0-1")
+
+    def test_explicit_spawn_cannot_reuse_a_reserved_slot(self) -> None:
+        status, first_spawn = http_json(
+            "POST",
+            "/api/pallet/spawn",
+            {"weight_kg": 100.0, "target_slot": "SLOT-1-0"},
+        )
+        self.assertEqual(status, 200, first_spawn)
+
+        status, error_payload = http_json(
+            "POST",
+            "/api/pallet/spawn",
+            {"weight_kg": 110.0, "target_slot": "SLOT-1-0"},
+        )
+        self.assertEqual(status, 400, error_payload)
+        self.assertEqual(error_payload.get("error", {}).get("code"), "invalid_spawn_request")
+
 
 if __name__ == "__main__":
     unittest.main()

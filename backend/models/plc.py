@@ -130,7 +130,7 @@ class CentralPLC:
                 if pallet_on_cnv.position[0] >= cnv_c.exit_x:
                     # Pallet reached end, store in rack
                     target = pallet_on_cnv.target_slot or rack.allocate_slot()
-                    if target and rack.is_slot_available(target):
+                    if target and rack.can_occupy_slot(target, pallet_on_cnv.id):
                         rack.occupy_slot(target, pallet_on_cnv.id)
                         slot_pos = rack.get_slot_position(target)
                         pallet_on_cnv.position = (slot_pos[0], slot_pos[1] + 0.5, slot_pos[2])
