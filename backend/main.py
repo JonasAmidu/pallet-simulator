@@ -28,6 +28,13 @@ logger = logging.getLogger("sim")
 
 TICK_HZ = 60
 TICK_DT = 1.0 / TICK_HZ
+FAULT_ERROR_MESSAGE = "Invalid fault request."
+NODE_SCOPED_FAULTS = {
+    FaultType.BELT_JAM,
+    FaultType.MOTOR_OVERTEMP,
+    FaultType.CONVEYOR_POWER_LOSS,
+}
+CONVEYOR_NODE_IDS = {"CNV-A", "CNV-B", "CNV-C"}
 
 
 def pallet_to_dict(pallet: Pallet) -> dict:
@@ -54,7 +61,7 @@ def build_state_snapshot(state_ref, all_nodes, plc, fault_injector, rack, scanne
             node_id: node.to_dict() for node_id, node in all_nodes.items()
         },
         "slots": rack.to_dict()["slots"],
-        "faults_active": [f for f, active in fault_injector.active_faults.items() if active],
+        "faults_active": fault_injector.active_fault_names(),
         "alarms": plc.get_alarms(all_nodes, scanner),
     }
 
@@ -68,6 +75,17 @@ def spawn_error_response(message: str, details: list[str] | None = None, status:
     }
     if details:
         payload["error"]["details"] = details
+    return web.json_response(payload, status=status)
+
+
+def fault_error_response(details: list[str], status: int = 400):
+    payload = {
+        "error": {
+            "code": "invalid_fault_request",
+            "message": FAULT_ERROR_MESSAGE,
+            "details": details,
+        }
+    }
     return web.json_response(payload, status=status)
 
 
@@ -107,6 +125,54 @@ async def parse_spawn_request(request, rack):
     return float(weight), target_slot, None
 
 
+async def parse_json_object(request, *, allow_empty_body: bool = False):
+    raw_body = await request.text()
+    if not raw_body.strip():
+        if allow_empty_body:
+            return {}, None
+        return None, fault_error_response(["Request body must be a JSON object."])
+
+    try:
+        data = json.loads(raw_body)
+    except json.JSONDecodeError:
+        return None, fault_error_response(["Request body must be valid JSON."])
+
+    if not isinstance(data, dict):
+        return None, fault_error_response(["Request body must be a JSON object."])
+
+    return data, None
+
+
+def validate_fault_request(data: dict, all_nodes: dict, *, allow_clear_all: bool = False):
+    if allow_clear_all and not data:
+        return None, None, None
+
+    errors = []
+    raw_fault_type = data.get("fault_type")
+    fault = None
+    if raw_fault_type is None:
+        errors.append("fault_type is required.")
+    elif not isinstance(raw_fault_type, str) or not raw_fault_type.strip():
+        errors.append("fault_type must be a non-empty string.")
+    else:
+        fault = FaultType.parse(raw_fault_type)
+        if fault is None:
+            supported = ", ".join(fault_type.value for fault_type in FaultType)
+            errors.append(f"fault_type must be one of: {supported}.")
+
+    node_id = data.get("node_id")
+    if node_id is not None and (not isinstance(node_id, str) or node_id not in all_nodes):
+        errors.append("node_id must reference a known node.")
+
+    if fault in NODE_SCOPED_FAULTS and node_id is not None and node_id not in CONVEYOR_NODE_IDS:
+        errors.append("node_id must reference one of: CNV-A, CNV-B, CNV-C.")
+
+    if errors:
+        return None, None, fault_error_response(errors)
+
+    return fault.value, node_id, None
+
+
 def create_nodes():
     cnv_a = ConveyorNode("CNV-A", length_m=4.0, speed_mps=0.5, direction=1)
     cnv_a.entry_x = 0.0
@@ -137,6 +203,18 @@ def create_nodes():
     return all_nodes, plc, fault_injector, rack, scanner
 
 
+def sync_fault_state(all_nodes, plc, fault_injector, scanner, pallets):
+    fault_injector.apply_fault_effects(all_nodes, pallets)
+    scanner.alarm_active = scanner.beam_broken or fault_injector.is_active(FaultType.LASER_BEAM_BLOCKED.value)
+
+    if plc.check_estop(all_nodes, scanner):
+        plc.state = "ESTOP"
+        return
+
+    if plc.state == "ESTOP":
+        plc.reset()
+
+
 async def tick_loop(state_ref, all_nodes, plc, fault_injector, rack, scanner):
     pallets: list[Pallet] = []
     tick = 0
@@ -145,18 +223,8 @@ async def tick_loop(state_ref, all_nodes, plc, fault_injector, rack, scanner):
     while True:
         t0 = time.monotonic()
 
-        # Apply fault effects
-        fault_injector.apply_fault_effects(all_nodes, pallets)
-
-        # Update scanner alarm
-        scanner.alarm_active = scanner.beam_broken or any(
-            fault_injector.is_active(f) for f in [FaultType.LASER_BEAM_BLOCKED.value]
-        )
-
-        # If estop, halt everything
-        if plc.check_estop(all_nodes, scanner):
-            plc.state = "ESTOP"
-        else:
+        sync_fault_state(all_nodes, plc, fault_injector, scanner, pallets)
+        if plc.state != "ESTOP":
             plc.update(TICK_DT, all_nodes, pallets, rack)
 
         # Update each node physics
@@ -208,14 +276,38 @@ async def main():
         return web.json_response(state_ref["data"].copy())
 
     async def handle_fault_inject(request):
-        data = await request.json()
-        fault_injector.inject(data["fault_type"], data.get("node_id"))
-        return web.json_response({"status": "ok", "active_faults": fault_injector.active_faults})
+        data, error_response = await parse_json_object(request)
+        if error_response is not None:
+            return error_response
+
+        fault_type, node_id, error_response = validate_fault_request(data, all_nodes)
+        if error_response is not None:
+            return error_response
+
+        fault_injector.inject(fault_type, node_id)
+        pallets = state_ref["pallets_ref"] or []
+        sync_fault_state(all_nodes, plc, fault_injector, scanner, pallets)
+        state_ref["data"] = build_state_snapshot(state_ref, all_nodes, plc, fault_injector, rack, scanner)
+        return web.json_response({"status": "ok", "faults_active": state_ref["data"]["faults_active"]})
 
     async def handle_fault_clear(request):
-        data = await request.json()
-        fault_injector.clear(data["fault_type"])
-        return web.json_response({"status": "ok"})
+        data, error_response = await parse_json_object(request, allow_empty_body=True)
+        if error_response is not None:
+            return error_response
+
+        fault_type, _, error_response = validate_fault_request(data, all_nodes, allow_clear_all=True)
+        if error_response is not None:
+            return error_response
+
+        if fault_type is None:
+            fault_injector.clear_all()
+        else:
+            fault_injector.clear(fault_type)
+
+        pallets = state_ref["pallets_ref"] or []
+        sync_fault_state(all_nodes, plc, fault_injector, scanner, pallets)
+        state_ref["data"] = build_state_snapshot(state_ref, all_nodes, plc, fault_injector, rack, scanner)
+        return web.json_response({"status": "ok", "faults_active": state_ref["data"]["faults_active"]})
 
     async def handle_pallet_spawn(request):
         weight, slot, error_response = await parse_spawn_request(request, rack)
