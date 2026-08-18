@@ -125,7 +125,7 @@ cd ..
 ### Backend and frontend checks
 
 ```bash
-pytest backend/tests
+python -m unittest discover -s backend/tests -v
 cd frontend && npm test && npm run build && cd ..
 ./scripts/smoke-local.sh
 ./scripts/check-generated-files.sh
