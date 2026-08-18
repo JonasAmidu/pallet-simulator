@@ -1,4 +1,4 @@
-name: Backend CI
+name: Baseline CI
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  backend-test:
+  baseline-local:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,38 +18,20 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install deps
-        run: pip install -r backend/requirements.txt
-        working-directory: backend
-
-      - name: Syntax check
-        run: python -m py_compile backend/main.py
-
-      - name: Unit smoke test
-        run: |
-          python -c "
-import sys, os, importlib.util
-sys.path.insert(0, os.path.join(os.getcwd(), 'backend'))
-for mod in ['models.pallet','models.conveyor','models.lift','models.rack','models.scanner','models.plc','physics.physics','bus.modbus','faults.injector','api.websocket']:
-    spec = importlib.util.find_spec(mod, package='backend')
-    if spec is None:
-        print(f'MISSING: {mod}')
-        sys.exit(1)
-print('All modules OK')
-"
-
-  frontend-build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Check tracked generated files
+        run: ./scripts/check-generated-files.sh
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
 
       - name: Install
         run: npm ci
@@ -58,3 +40,22 @@ print('All modules OK')
       - name: Build
         run: npm run build
         working-directory: frontend
+
+      - name: Local smoke test
+        run: ./scripts/smoke-local.sh
+
+      - name: Ensure repo stays clean
+        run: test -z "$(git status --short --untracked-files=normal)"
+
+  baseline-container:
+    runs-on: ubuntu-latest
+    needs: baseline-local
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check tracked generated files
+        run: ./scripts/check-generated-files.sh
+
+      - name: Container smoke test
+        run: ./scripts/smoke-compose.sh

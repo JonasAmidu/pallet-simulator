@@ -1,5 +1,6 @@
 import { useSimStore } from '../simulation/state'
 import { isDemoMode, send } from '../simulation/SocketClient'
+import { apiUrl } from '../simulation/network'
 
 const FAULT_TYPES = [
   { id: 'BELT_JAM_CNV_A', label: 'BELT_JAM (A)', group: 'Belt Jams' },
@@ -18,7 +19,7 @@ async function injectFault(faultId) {
     return
   }
   try {
-    await fetch('http://localhost:8000/api/fault/inject', {
+    await fetch(apiUrl('/fault/inject'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fault_type: faultId }),
@@ -35,7 +36,7 @@ async function clearFaults() {
     return
   }
   try {
-    await fetch('http://localhost:8000/api/fault/clear', {
+    await fetch(apiUrl('/fault/clear'), {
       method: 'POST',
     })
   } catch (e) {
