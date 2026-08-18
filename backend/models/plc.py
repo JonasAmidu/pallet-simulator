@@ -60,12 +60,16 @@ class CentralPLC:
                 self.state = 'LOADING'
 
         if self.state == 'LOADING':
-            # Wait for pallet to be placed on entry conveyor
             cnv_a = all_nodes.get("CNV-A")
+            queued_pallet = next((p for p in pallets if p.state == 'idle' and p.on_node is None), None)
+            if queued_pallet and cnv_a:
+                queued_pallet.on_node = "CNV-A"
+                queued_pallet.position = (cnv_a.entry_x, 0.0, 1.0)
+                queued_pallet.state = 'moving'
+
             if cnv_a:
                 pallet_on_cnv = next((p for p in pallets if p.on_node == "CNV-A"), None)
                 if pallet_on_cnv and cnv_a.position_mm > 200:
-                    # Pallet has passed entry photo-eye
                     pallet_on_cnv.state = 'moving'
                     self.state = 'TRANSPORTING'
 

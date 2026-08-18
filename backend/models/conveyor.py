@@ -44,6 +44,16 @@ class ConveyorNode:
         self._target_speed = speed_mps
         self.speed_mps = speed_mps
 
+    def reset(self):
+        self.speed_mps = self._target_speed
+        self.belt_rpm = 0.0
+        self.motor_torque_nm = 0.0
+        self.photo_eye = False
+        self.weight_kg = 0.0
+        self.temperature_c = 25.0
+        self.position_mm = 0.0
+        self.powered = True
+
     def update(self, dt: float, pallets: list[Pallet], all_nodes: dict, fault_injector):
         """Update conveyor sensors and physics."""
         if self.powered:
