@@ -1,4 +1,5 @@
 import { isDemoMode, send } from '../simulation/SocketClient'
+import { apiUrl } from '../simulation/network'
 
 async function spawnPallet() {
   const weight = Math.round(80 + Math.random() * 120)
@@ -7,7 +8,7 @@ async function spawnPallet() {
     return
   }
   try {
-    await fetch('http://localhost:8000/api/pallet/spawn', {
+    await fetch(apiUrl('/pallet/spawn'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ weight_kg: weight }),
@@ -24,7 +25,7 @@ async function resetSim() {
     return
   }
   try {
-    await fetch('http://localhost:8000/api/reset', { method: 'POST' })
+    await fetch(apiUrl('/reset'), { method: 'POST' })
   } catch (e) {
     send({ type: 'reset' })
   }

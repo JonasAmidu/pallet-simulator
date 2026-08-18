@@ -74,25 +74,54 @@ IDLE → LOADING → TRANSPORTING → LIFTING → STORING → COMPLETE
 
 ## Quick Start
 
-### Backend
+### Local baseline
 ```bash
-cd backend
-pip install -r requirements.txt
-python main.py
-# Runs on ws://localhost:8765 + http://localhost:8000
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r backend/requirements.txt
+cd frontend && npm ci && cd ..
 ```
 
-### Frontend
+Start the backend:
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 backend/main.py
+# Health: http://localhost:8000/api/health
+```
+
+In a second shell, start the frontend:
 ```bash
 cd frontend
-npm install
-npm run dev
-# Runs on http://localhost:5173
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+# App: http://localhost:5173
+# Proxied backend health: http://localhost:5173/api/health
 ```
 
-### Docker
+Automated local verification:
 ```bash
-docker compose up --build
+./scripts/smoke-local.sh
+```
+
+### Container baseline
+```bash
+docker compose up --build -d
+```
+
+Wait for health:
+```bash
+curl http://localhost:8000/api/health
+curl http://localhost:8080/healthz
+curl http://localhost:8080/api/health
+```
+
+Automated container verification:
+```bash
+./scripts/smoke-compose.sh
+```
+
+### Repository hygiene check
+```bash
+./scripts/check-generated-files.sh
 ```
 
 ---

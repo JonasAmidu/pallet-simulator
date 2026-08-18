@@ -1,8 +1,7 @@
 import asyncio
+import contextlib
 import logging
 import time
-import uuid
-from datetime import datetime
 
 from aiohttp import web
 
@@ -83,7 +82,8 @@ async def tick_loop(state_ref, all_nodes, plc, fault_injector, rack, scanner):
 
         # Update each node physics
         for node in all_nodes.values():
-            node.update(TICK_DT, pallets, all_nodes, fault_injector)
+            if hasattr(node, "update"):
+                node.update(TICK_DT, pallets, all_nodes, fault_injector)
 
         # Update pallet positions — move along conveyors
         for pallet in pallets:
@@ -143,7 +143,6 @@ async def main():
 
     # WebSocket server
     ws_port = 8765
-    ws_server = websockets.serve(WebSocketHandler.handler, "0.0.0.0", ws_port)
     logger.info(f"WebSocket server on ws://0.0.0.0:{ws_port}")
 
     # HTTP server for REST endpoints
@@ -192,7 +191,16 @@ async def main():
         return web.json_response({"status": "reset"})
 
     async def handle_health(request):
-        return web.json_response({"status": "ok", "tick": 0})
+        state = state_ref["data"]
+        if state is None:
+            return web.json_response({"status": "starting"}, status=503)
+        return web.json_response(
+            {
+                "status": "ok",
+                "tick": state["tick"],
+                "plc_state": state["plc_state"],
+            }
+        )
 
     app = web.Application()
     app.router.add_get("/api/state", handle_state)
@@ -208,8 +216,14 @@ async def main():
     await site.start()
     logger.info("HTTP REST API on http://0.0.0.0:8000")
 
-    # Run both servers
-    await asyncio.gather(tick_task, ws_server)
+    try:
+        async with websockets.serve(WebSocketHandler.handler, "0.0.0.0", ws_port):
+            await tick_task
+    finally:
+        tick_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await tick_task
+        await runner.cleanup()
 
 
 if __name__ == "__main__":

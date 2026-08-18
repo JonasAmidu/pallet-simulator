@@ -1,8 +1,8 @@
 import { useSimStore } from './state.js'
 import { DEMO_STATE } from './demoData.js'
+import { shouldUseDemoMode, wsUrl } from './network.js'
 
 let ws = null
-let reconnectTimer = null
 let demoMode = false
 let demoTick = 0
 let demoInterval = null
@@ -69,25 +69,19 @@ function stopDemoMode() {
   demoMode = false
 }
 
-function connect(port) {
+function connect() {
   if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
     return
   }
 
-  // Detect if we're on GitHub Pages (static hosting) — use demo mode
-  const isStaticHost = !window.location.hostname.includes('localhost') &&
-                       !window.location.hostname.includes('127.0.0.1')
-
-  if (isStaticHost) {
-    // Don't even try WebSocket on static hosting, go straight to demo
+  if (shouldUseDemoMode()) {
     startDemoMode()
     return
   }
 
-  const url = `ws://localhost:${port}`
+  const url = wsUrl()
   ws = new WebSocket(url)
 
-  // Timeout if connection takes too long (static hosts can't reach localhost)
   const connectTimeout = setTimeout(() => {
     if (ws && ws.readyState === WebSocket.CONNECTING) {
       ws.close()
@@ -115,12 +109,7 @@ function connect(port) {
     clearTimeout(connectTimeout)
     useSimStore.getState().setConnected(false)
     ws = null
-    // Try reconnect on alternate port once
-    if (port === 8000) {
-      setTimeout(() => connect(8765), 1000)
-    } else {
-      startDemoMode()
-    }
+    startDemoMode()
   }
 
   ws.onerror = (err) => {
@@ -130,15 +119,11 @@ function connect(port) {
 }
 
 export function initSocket() {
-  connect(8000)
+  connect()
 }
 
 export function closeSocket() {
   stopDemoMode()
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = null
-  }
   if (ws) {
     ws.close()
     ws = null
