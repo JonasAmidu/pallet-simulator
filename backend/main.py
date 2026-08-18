@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import json
 import logging
 import time
 
@@ -27,6 +28,83 @@ logger = logging.getLogger("sim")
 
 TICK_HZ = 60
 TICK_DT = 1.0 / TICK_HZ
+
+
+def pallet_to_dict(pallet: Pallet) -> dict:
+    return {
+        "id": pallet.id,
+        "position": list(pallet.position),
+        "velocity": list(pallet.velocity),
+        "state": pallet.state,
+        "on_node": pallet.on_node,
+        "weight_kg": pallet.weight_kg,
+        "target_slot": pallet.target_slot,
+    }
+
+
+def build_state_snapshot(state_ref, all_nodes, plc, fault_injector, rack, scanner) -> dict:
+    pallets = state_ref["pallets_ref"] or []
+    tick = state_ref.get("tick", 0)
+    return {
+        "tick": tick,
+        "timestamp": asyncio.get_running_loop().time(),
+        "plc_state": plc.state,
+        "pallets": [pallet_to_dict(pallet) for pallet in pallets],
+        "nodes": {
+            node_id: node.to_dict() for node_id, node in all_nodes.items()
+        },
+        "slots": rack.to_dict()["slots"],
+        "faults_active": [f for f, active in fault_injector.active_faults.items() if active],
+        "alarms": plc.get_alarms(all_nodes, scanner),
+    }
+
+
+def spawn_error_response(message: str, details: list[str] | None = None, status: int = 400):
+    payload = {
+        "error": {
+            "code": "invalid_spawn_request",
+            "message": message,
+        }
+    }
+    if details:
+        payload["error"]["details"] = details
+    return web.json_response(payload, status=status)
+
+
+async def parse_spawn_request(request, rack):
+    try:
+        data = await request.json()
+    except (json.JSONDecodeError, web.HTTPBadRequest):
+        return None, None, spawn_error_response("Invalid pallet spawn request.", ["Request body must be valid JSON."])
+
+    if not isinstance(data, dict):
+        return None, None, spawn_error_response("Invalid pallet spawn request.", ["Request body must be a JSON object."])
+
+    errors = []
+    weight = data.get("weight_kg", 100.0)
+    if isinstance(weight, bool) or not isinstance(weight, (int, float)) or weight <= 0:
+        errors.append("weight_kg must be a positive number.")
+
+    target_slot = data.get("target_slot")
+    if target_slot is None:
+        target_slot = rack.allocate_slot()
+        if target_slot is None:
+            return None, None, web.json_response(
+                {
+                    "error": {
+                        "code": "spawn_unavailable",
+                        "message": "No rack slots are available.",
+                    }
+                },
+                status=409,
+            )
+    elif not isinstance(target_slot, str) or not rack.is_slot_available(target_slot):
+        errors.append("target_slot must reference an available rack slot.")
+
+    if errors:
+        return None, None, spawn_error_response("Invalid pallet spawn request.", errors)
+
+    return float(weight), target_slot, None
 
 
 def create_nodes():
@@ -62,6 +140,7 @@ def create_nodes():
 async def tick_loop(state_ref, all_nodes, plc, fault_injector, rack, scanner):
     pallets: list[Pallet] = []
     tick = 0
+    state_ref["pallets_ref"] = pallets
 
     while True:
         t0 = time.monotonic()
@@ -95,33 +174,10 @@ async def tick_loop(state_ref, all_nodes, plc, fault_injector, rack, scanner):
                         # Pallet has exited this node — PLC state machine handles next handoff
                         pass
 
-        # Build state dict
-        state = {
-            "tick": tick,
-            "timestamp": asyncio.get_event_loop().time(),
-            "plc_state": plc.state,
-            "pallets": [
-                {
-                    "id": p.id,
-                    "position": list(p.position),
-                    "velocity": list(p.velocity),
-                    "state": p.state,
-                    "on_node": p.on_node,
-                    "weight_kg": p.weight_kg,
-                    "target_slot": p.target_slot,
-                }
-                for p in pallets
-            ],
-            "nodes": {
-                node_id: node.to_dict() for node_id, node in all_nodes.items()
-            },
-            "slots": rack.to_dict()["slots"],
-            "faults_active": [f for f, active in fault_injector.active_faults.items() if active],
-            "alarms": plc.get_alarms(all_nodes, scanner),
-        }
+        state_ref["tick"] = tick
+        state = build_state_snapshot(state_ref, all_nodes, plc, fault_injector, rack, scanner)
 
         state_ref["data"] = state
-        state_ref["pallets_ref"] = pallets
 
         await broadcast_state(state)
         tick += 1
@@ -136,7 +192,7 @@ async def main():
     all_nodes, plc, fault_injector, rack, scanner = create_nodes()
 
     # Shared state reference for HTTP handlers
-    state_ref: dict = {"data": None, "pallets_ref": None}
+    state_ref: dict = {"data": None, "pallets_ref": None, "tick": 0}
 
     # Start tick loop in background
     tick_task = asyncio.create_task(tick_loop(state_ref, all_nodes, plc, fault_injector, rack, scanner))
@@ -162,13 +218,18 @@ async def main():
         return web.json_response({"status": "ok"})
 
     async def handle_pallet_spawn(request):
-        data = await request.json()
+        weight, slot, error_response = await parse_spawn_request(request, rack)
+        if error_response is not None:
+            return error_response
+
         pallets = state_ref["pallets_ref"]
         if pallets is None:
             pallets = []
-        slot = data.get("target_slot") or rack.allocate_slot()
-        p = plc.spawn_pallet(data.get("weight_kg", 100.0), slot, pallets)
-        return web.json_response({"id": p.id, "slot": slot})
+            state_ref["pallets_ref"] = pallets
+
+        pallet = plc.spawn_pallet(weight, slot, pallets)
+        state_ref["data"] = build_state_snapshot(state_ref, all_nodes, plc, fault_injector, rack, scanner)
+        return web.json_response({"id": pallet.id, "target_slot": slot})
 
     async def handle_reset(request):
         pallets = state_ref["pallets_ref"]
@@ -188,6 +249,7 @@ async def main():
                 node.overload_kg = False
         scanner.beam_broken = False
         scanner.alarm_active = False
+        state_ref["data"] = build_state_snapshot(state_ref, all_nodes, plc, fault_injector, rack, scanner)
         return web.json_response({"status": "reset"})
 
     async def handle_health(request):
